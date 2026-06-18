@@ -30,4 +30,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: result
-          path: result.json
+          path: |
+            result.json
+            chart_all_data.json
+            chip_all_data.json
