@@ -19,7 +19,6 @@ jobs:
       - name: Install playwright
         run: |
           pip install playwright
-          # 使用 python -m playwright 安装浏览器（与 Python 包匹配）
           python -m playwright install chromium
 
       - name: Run scrape test
@@ -34,3 +33,16 @@ jobs:
             result.json
             chart_all_data.json
             chip_all_data.json
+
+      - name: Commit data to repo
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p data
+          cp result.json data/
+          cp chart_all_data.json data/
+          cp chip_all_data.json data/
+          git add data/
+          git commit -m "更新饰品抓取数据 $(date -u '+%Y-%m-%d %H:%M')" || echo "无变更"
+          git push
