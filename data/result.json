@@ -1,0 +1,402 @@
+{
+  "version": "v6",
+  "optimizations": [
+    "稳定性(no_new>=3)",
+    "性能(减少等待)",
+    "容错(重试+超时)"
+  ],
+  "goods_ids": [
+    "136",
+    "134",
+    "133",
+    "135",
+    "137"
+  ],
+  "start_time": "2026-06-18T20:59:35.367314",
+  "items": [
+    {
+      "good_id": "136",
+      "info": {
+        "name": "AK-47 | 红线 (略有磨损)",
+        "market_hash_name": "AK-47 | Redline (Minimal Wear)",
+        "exterior": "略有磨损",
+        "buff_sell_price": 1009.0,
+        "yyyp_sell_price": 987.0,
+        "yyyp_buy_price": 1300.0,
+        "yyyp_sell_num": 1351,
+        "steam_sell_price": 1543.15,
+        "statistic": 37781,
+        "turnover_number": 11,
+        "turnover_avg_price": 318.5,
+        "sell_price_rate_1": -0.86,
+        "sell_price_rate_7": 1.0,
+        "sell_price_rate_30": -7.43,
+        "yyyp_sell_price_rate_1": -1.74,
+        "yyyp_sell_price_rate_30": -8.23
+      },
+      "chart_daily": {
+        "count": 962,
+        "first": {
+          "t": "1685548800000",
+          "o": 586.0,
+          "c": 585.0,
+          "h": 588.0,
+          "l": 582.0,
+          "v": 1
+        },
+        "last": {
+          "t": "1768752000000",
+          "o": 1497.0,
+          "c": 1490.0,
+          "h": 1497.0,
+          "l": 1480.0,
+          "v": 76
+        }
+      },
+      "chart_1h": {
+        "count": 360,
+        "first": {
+          "t": "1780502400000",
+          "o": 993.0,
+          "c": 994.5,
+          "h": 994.5,
+          "l": 988.0,
+          "v": 20
+        },
+        "last": {
+          "t": "1781794800000",
+          "o": 987.98,
+          "c": 990.0,
+          "h": 990.0,
+          "l": 987.98,
+          "v": 5
+        }
+      },
+      "chip_data": {
+        "fields": [
+          "low",
+          "high",
+          "avg",
+          "volume",
+          "date"
+        ],
+        "date_count": 1113,
+        "first_date": "2023-06-01",
+        "last_date": "2026-06-19",
+        "data_size_bytes": 45391,
+        "data_size_kb": 44.3
+      },
+      "errors": [],
+      "duration_seconds": 51.942401
+    },
+    {
+      "good_id": "134",
+      "info": {
+        "name": "AK-47 | 红线 (战痕累累)",
+        "market_hash_name": "AK-47 | Redline (Battle-Scarred)",
+        "exterior": "战痕累累",
+        "buff_sell_price": 174.49,
+        "yyyp_sell_price": 162.48,
+        "yyyp_buy_price": 158.0,
+        "yyyp_sell_num": 62,
+        "steam_sell_price": 227.73,
+        "statistic": 21295,
+        "turnover_number": 33,
+        "turnover_avg_price": 34.56,
+        "sell_price_rate_1": 6.4,
+        "sell_price_rate_7": 7.06,
+        "sell_price_rate_30": -4.85,
+        "yyyp_sell_price_rate_1": 0.61,
+        "yyyp_sell_price_rate_30": -15.98
+      },
+      "chart_daily": {
+        "count": 1114,
+        "first": {
+          "t": "1685548800000",
+          "o": 92.0,
+          "c": 89.9,
+          "h": 93.0,
+          "l": 89.9,
+          "v": 2
+        },
+        "last": {
+          "t": "1781712000000",
+          "o": 161.49,
+          "c": 161.5,
+          "h": 161.5,
+          "l": 161.49,
+          "v": 5
+        }
+      },
+      "chart_1h": {
+        "count": 360,
+        "first": {
+          "t": "1780502400000",
+          "o": 183.92,
+          "c": 183.92,
+          "h": 183.92,
+          "l": 183.92,
+          "v": 15
+        },
+        "last": {
+          "t": "1781794800000",
+          "o": 161.5,
+          "c": 161.5,
+          "h": 161.5,
+          "l": 161.5,
+          "v": 0
+        }
+      },
+      "chip_data": {
+        "fields": [
+          "low",
+          "high",
+          "avg",
+          "volume",
+          "date"
+        ],
+        "date_count": 1115,
+        "first_date": "2023-06-01",
+        "last_date": "2026-06-19",
+        "data_size_bytes": 40543,
+        "data_size_kb": 39.6
+      },
+      "errors": [],
+      "duration_seconds": 49.548946
+    },
+    {
+      "good_id": "133",
+      "info": {
+        "name": "AK-47 | 红色层压板 (破损不堪)",
+        "market_hash_name": "AK-47 | Red Laminate (Well-Worn)",
+        "exterior": "破损不堪",
+        "buff_sell_price": 399.5,
+        "yyyp_sell_price": 473.29,
+        "yyyp_buy_price": 373.0,
+        "yyyp_sell_num": 13,
+        "steam_sell_price": 545.76,
+        "statistic": 1917,
+        "turnover_number": 1,
+        "turnover_avg_price": 58.16,
+        "sell_price_rate_1": 0.0,
+        "sell_price_rate_7": -4.88,
+        "sell_price_rate_30": -21.41,
+        "yyyp_sell_price_rate_1": 0.0,
+        "yyyp_sell_price_rate_30": -3.35
+      },
+      "chart_daily": {
+        "count": 1114,
+        "first": {
+          "t": "1685548800000",
+          "o": 185.0,
+          "c": 185.0,
+          "h": 185.0,
+          "l": 185.0,
+          "v": 0
+        },
+        "last": {
+          "t": "1781712000000",
+          "o": 473.29,
+          "c": 473.29,
+          "h": 473.29,
+          "l": 473.29,
+          "v": 1
+        }
+      },
+      "chart_1h": {
+        "count": 360,
+        "first": {
+          "t": "1780502400000",
+          "o": 410.0,
+          "c": 410.0,
+          "h": 410.0,
+          "l": 410.0,
+          "v": 0
+        },
+        "last": {
+          "t": "1781794800000",
+          "o": 473.29,
+          "c": 473.29,
+          "h": 473.29,
+          "l": 473.29,
+          "v": 0
+        }
+      },
+      "chip_data": {
+        "fields": [
+          "low",
+          "high",
+          "avg",
+          "volume",
+          "date"
+        ],
+        "date_count": 1115,
+        "first_date": "2023-06-01",
+        "last_date": "2026-06-19",
+        "data_size_bytes": 38409,
+        "data_size_kb": 37.5
+      },
+      "errors": [],
+      "duration_seconds": 49.364683
+    },
+    {
+      "good_id": "135",
+      "info": {
+        "name": "AK-47 | 红线 (久经沙场)",
+        "market_hash_name": "AK-47 | Redline (Field-Tested)",
+        "exterior": "久经沙场",
+        "buff_sell_price": 207.99,
+        "yyyp_sell_price": 199.0,
+        "yyyp_buy_price": 387.0,
+        "yyyp_sell_num": 10608,
+        "steam_sell_price": 290.22,
+        "statistic": 448927,
+        "turnover_number": 436,
+        "turnover_avg_price": 46.28,
+        "sell_price_rate_1": 1.71,
+        "sell_price_rate_7": 4.07,
+        "sell_price_rate_30": 4.0,
+        "yyyp_sell_price_rate_1": -1.68,
+        "yyyp_sell_price_rate_30": 0.52
+      },
+      "chart_daily": {
+        "count": 1112,
+        "first": {
+          "t": "1685548800000",
+          "o": 134.0,
+          "c": 130.5,
+          "h": 134.0,
+          "l": 129.5,
+          "v": 37
+        },
+        "last": {
+          "t": "1781712000000",
+          "o": 202.39,
+          "c": 200.5,
+          "h": 203.89,
+          "l": 199.0,
+          "v": 643
+        }
+      },
+      "chart_1h": {
+        "count": 360,
+        "first": {
+          "t": "1780502400000",
+          "o": 202.0,
+          "c": 201.3,
+          "h": 202.0,
+          "l": 201.3,
+          "v": 291
+        },
+        "last": {
+          "t": "1781794800000",
+          "o": 201.9,
+          "c": 200.5,
+          "h": 201.9,
+          "l": 200.5,
+          "v": 15
+        }
+      },
+      "chip_data": {
+        "fields": [
+          "low",
+          "high",
+          "avg",
+          "volume",
+          "date"
+        ],
+        "date_count": 1113,
+        "first_date": "2023-06-01",
+        "last_date": "2026-06-19",
+        "data_size_bytes": 44717,
+        "data_size_kb": 43.7
+      },
+      "errors": [],
+      "duration_seconds": 49.366422
+    },
+    {
+      "good_id": "137",
+      "info": {
+        "name": "AK-47 | 红线 (破损不堪)",
+        "market_hash_name": "AK-47 | Redline (Well-Worn)",
+        "exterior": "破损不堪",
+        "buff_sell_price": 178.0,
+        "yyyp_sell_price": 176.97,
+        "yyyp_buy_price": 162.0,
+        "yyyp_sell_num": 67,
+        "steam_sell_price": 237.04,
+        "statistic": 15047,
+        "turnover_number": 20,
+        "turnover_avg_price": 34.24,
+        "sell_price_rate_1": 6.74,
+        "sell_price_rate_7": -1.11,
+        "sell_price_rate_30": -5.09,
+        "yyyp_sell_price_rate_1": -0.85,
+        "yyyp_sell_price_rate_30": -2.8
+      },
+      "chart_daily": {
+        "count": 1114,
+        "first": {
+          "t": "1685548800000",
+          "o": 104.5,
+          "c": 105.0,
+          "h": 105.0,
+          "l": 103.99,
+          "v": 3
+        },
+        "last": {
+          "t": "1781712000000",
+          "o": 178.48,
+          "c": 177.48,
+          "h": 178.48,
+          "l": 177.48,
+          "v": 5
+        }
+      },
+      "chart_1h": {
+        "count": 360,
+        "first": {
+          "t": "1780502400000",
+          "o": 177.77,
+          "c": 177.41,
+          "h": 177.77,
+          "l": 177.41,
+          "v": 0
+        },
+        "last": {
+          "t": "1781794800000",
+          "o": 177.48,
+          "c": 177.48,
+          "h": 177.48,
+          "l": 177.48,
+          "v": 0
+        }
+      },
+      "chip_data": {
+        "fields": [
+          "low",
+          "high",
+          "avg",
+          "volume",
+          "date"
+        ],
+        "date_count": 1115,
+        "first_date": "2023-06-01",
+        "last_date": "2026-06-19",
+        "data_size_bytes": 41132,
+        "data_size_kb": 40.2
+      },
+      "errors": [],
+      "duration_seconds": 49.363747
+    }
+  ],
+  "end_time": "2026-06-18T21:03:45.521888",
+  "total_duration_seconds": 250.154574,
+  "summary": {
+    "total": 5,
+    "success": 5,
+    "failed": 0,
+    "total_duration": 250.2,
+    "avg_duration": 50.0
+  }
+}
