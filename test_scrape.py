@@ -283,10 +283,18 @@ def main():
                                         first_t = int(arr[0]["t"]) / 1000
                                         print(f"  翻页 {i+1} [滚轮]: +{len(arr)} 条, 总计 {len(all_chart_daily)} 条, 起始 {datetime.datetime.fromtimestamp(first_t)}", flush=True)
 
-                    # 方法 3: 如果还没效果，尝试键盘左箭头
+                    # 方法 3: 如果还没效果，尝试键盘左箭头（不 click canvas，直接按键）
                     if len(all_api_data.get(chart_url, [])) == before_resp_count:
                         page.mouse.move(canvas_info["x"] + canvas_info["width"] / 2, center_y)
-                        page.click("canvas")
+                        # 先 focus canvas 通过 JS
+                        page.evaluate("""() => {
+                            const canvas = document.querySelector('canvas');
+                            if (canvas) {
+                                canvas.focus();
+                                canvas.dispatchEvent(new MouseEvent('mousedown', {bubbles: true}));
+                                canvas.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+                            }
+                        }""")
                         for _ in range(10):
                             page.keyboard.press("ArrowLeft")
                         page.wait_for_timeout(3000)
