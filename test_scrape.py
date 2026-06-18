@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""GitHub Actions Playwright 抓取测试脚本
+"""GitHub Actions Playwright 抓取测试脚本 v2
 
-测试目标：验证 GitHub Actions 环境能否用 Playwright 抓取 CSQAQ 网页数据
-- 基本信息（/proxies/api/v1/info/good）
-- K 线数据（/proxies/api/v1/info/simple/chartAll）
-- 筹码分布图（/proxies/api/v1/info/chipData）
+修复：
+1. info API 匹配改为关键字匹配
+2. 1小时数据不用 clear，改用请求计数
+3. 筹码分布图增加等待时间和选择器
+4. 增加调试输出
 """
 
 import json
@@ -12,27 +13,30 @@ import os
 import time
 from playwright.sync_api import sync_playwright
 
-GOODS_ID = "136"  # AK-47 | 红线（略有磨损）
+GOODS_ID = "136"
 DETAIL_URL = f"https://csqaq.com/goods/{GOODS_ID}"
 RESULT_FILE = "result.json"
 
 
 def main():
-    print("=" * 60)
-    print("  GitHub Actions Playwright 抓取测试")
-    print(f"  饰品: goods_id={GOODS_ID}")
-    print("=" * 60)
+    print("=" * 60, flush=True)
+    print("  GitHub Actions Playwright 抓取测试 v2", flush=True)
+    print(f"  饰品: goods_id={GOODS_ID}", flush=True)
+    print("=" * 60, flush=True)
 
     result = {
         "test_env": {
             "runner": os.environ.get("RUNNER_OS", "unknown"),
-            "python": os.environ.get("python_version", ""),
         },
         "good_id": GOODS_ID,
         "info": None,
         "chart_daily": None,
         "chart_1h": None,
         "chip_data": None,
+        "debug": {
+            "api_urls": [],
+            "page_title": None,
+        },
         "errors": [],
     }
 
@@ -53,248 +57,261 @@ def main():
             )
             page = context.new_page()
 
-            # 捕获 API 响应
-            api_responses = {}
+            # 捕获所有 API 响应
+            all_api_data = {}
+            chart_call_count = 0
 
             def handle_response(response):
+                nonlocal chart_call_count
                 url = response.url
                 if "csqaq.com/proxies/api" not in url:
                     return
                 try:
                     body = response.text()
-                    if not body or len(body) > 100000:
+                    if not body:
                         return
-                    api_responses[url] = {
-                        "status": response.status,
-                        "body": body,
-                    }
+                    # 记录所有 API URL
+                    if url not in result["debug"]["api_urls"]:
+                        result["debug"]["api_urls"].append(url)
+                    # 保存响应（提高大小限制到 1MB）
+                    if len(body) < 1000000:
+                        all_api_data[url] = {
+                            "status": response.status,
+                            "body": body,
+                        }
+                    if "chartAll" in url:
+                        chart_call_count += 1
                 except Exception:
                     pass
 
             page.on("response", handle_response)
 
             # 1. 访问详情页
-            print("\n[1] 访问详情页...")
+            print("\n[1] 访问详情页...", flush=True)
             page.goto(DETAIL_URL, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_timeout(6000)
-            print(f"  当前URL: {page.url}")
-            print(f"  页面标题: {page.title()}")
+            page.wait_for_timeout(8000)
+            title = page.title()
+            result["debug"]["page_title"] = title
+            print(f"  标题: {title}", flush=True)
+            print(f"  已捕获 API 数: {len(all_api_data)}", flush=True)
 
-            # 2. 提取基本信息
-            print("\n[2] 提取基本信息...")
-            info_url = f"https://csqaq.com/proxies/api/v1/info/good?id={GOODS_ID}"
-            if info_url in api_responses:
-                try:
-                    info_data = json.loads(api_responses[info_url]["body"])
-                    if info_data.get("code") == 200 and info_data.get("data"):
-                        d = info_data["data"]
-                        result["info"] = {
-                            "name": d.get("name"),
-                            "market_hash_name": d.get("market_hash_name"),
-                            "exterior": d.get("exterior_localized_name"),
-                            "buff_sell_price": d.get("buff_sell_price"),
-                            "yyyp_sell_price": d.get("yyyp_sell_price"),
-                            "yyyp_buy_price": d.get("yyyp_buy_price"),
-                            "yyyp_sell_num": d.get("yyyp_sell_num"),
-                            "steam_sell_price": d.get("steam_sell_price"),
-                            "statistic": d.get("statistic"),
-                            "turnover_number": d.get("turnover_number"),
-                            "turnover_avg_price": d.get("turnover_avg_price"),
-                            "sell_price_rate_1": d.get("sell_price_rate_1"),
-                            "sell_price_rate_7": d.get("sell_price_rate_7"),
-                            "sell_price_rate_30": d.get("sell_price_rate_30"),
-                            "yyyp_sell_price_rate_1": d.get("yyyp_sell_price_rate_1"),
-                            "yyyp_sell_price_rate_30": d.get("yyyp_sell_price_rate_30"),
-                        }
-                        print(f"  ✓ 名称: {result['info']['name']}")
-                        print(f"  ✓ 悠悠卖价: {result['info']['yyyp_sell_price']}")
-                        print(f"  ✓ 存世量: {result['info']['statistic']}")
-                    else:
-                        result["errors"].append(f"info API code={info_data.get('code')}, msg={info_data.get('msg')}")
-                        print(f"  ✗ info API 异常: {info_data.get('msg')}")
-                except Exception as e:
-                    result["errors"].append(f"info 解析失败: {e}")
-                    print(f"  ✗ 解析失败: {e}")
+            # 2. 提取基本信息 - 遍历所有捕获的 API 找 info/good
+            print("\n[2] 提取基本信息...", flush=True)
+            info_data = None
+            for url, data in all_api_data.items():
+                if "info/good" in url:
+                    try:
+                        parsed = json.loads(data["body"])
+                        if parsed.get("code") == 200 and parsed.get("data"):
+                            info_data = parsed["data"]
+                            print(f"  ✓ 找到 info API: {url}", flush=True)
+                            break
+                    except Exception:
+                        pass
+
+            if info_data:
+                result["info"] = {
+                    "name": info_data.get("name"),
+                    "market_hash_name": info_data.get("market_hash_name"),
+                    "exterior": info_data.get("exterior_localized_name"),
+                    "buff_sell_price": info_data.get("buff_sell_price"),
+                    "yyyp_sell_price": info_data.get("yyyp_sell_price"),
+                    "yyyp_buy_price": info_data.get("yyyp_buy_price"),
+                    "yyyp_sell_num": info_data.get("yyyp_sell_num"),
+                    "steam_sell_price": info_data.get("steam_sell_price"),
+                    "statistic": info_data.get("statistic"),
+                    "turnover_number": info_data.get("turnover_number"),
+                    "turnover_avg_price": info_data.get("turnover_avg_price"),
+                    "sell_price_rate_1": info_data.get("sell_price_rate_1"),
+                    "sell_price_rate_7": info_data.get("sell_price_rate_7"),
+                    "sell_price_rate_30": info_data.get("sell_price_rate_30"),
+                    "yyyp_sell_price_rate_1": info_data.get("yyyp_sell_price_rate_1"),
+                    "yyyp_sell_price_rate_30": info_data.get("yyyp_sell_price_rate_30"),
+                }
+                print(f"  名称: {result['info']['name']}", flush=True)
+                print(f"  悠悠卖价: {result['info']['yyyp_sell_price']}", flush=True)
             else:
-                result["errors"].append("info API 未被触发")
-                print("  ✗ info API 未被触发")
+                result["errors"].append("info API 未找到或无数据")
+                print(f"  ✗ 未找到 info API", flush=True)
+                print(f"  已捕获的 API: {result['debug']['api_urls']}", flush=True)
 
             # 3. 点击 K 线图
-            print("\n[3] 点击 K 线图...")
-            try:
-                page.evaluate("""() => {
-                    const buttons = document.querySelectorAll('button');
-                    for (const btn of buttons) {
-                        if (btn.textContent.trim() === 'K线图') {
-                            btn.click();
-                            return true;
-                        }
+            print("\n[3] 点击 K 线图...", flush=True)
+            clicked = page.evaluate("""() => {
+                const buttons = document.querySelectorAll('button');
+                for (const btn of buttons) {
+                    if (btn.textContent.trim() === 'K线图') {
+                        btn.click();
+                        return true;
                     }
-                    return false;
-                }""")
-                page.wait_for_timeout(3000)
-            except Exception as e:
-                result["errors"].append(f"点击 K线图失败: {e}")
+                }
+                return false;
+            }""")
+            print(f"  点击结果: {clicked}", flush=True)
+            page.wait_for_timeout(3000)
 
             # 4. 切换平台到悠悠有品
-            print("\n[4] 切换平台到悠悠有品...")
-            try:
-                select_info = page.evaluate("""() => {
+            print("\n[4] 切换平台到悠悠有品...", flush=True)
+            select_info = page.evaluate("""() => {
+                const selects = document.querySelectorAll('select');
+                for (const sel of selects) {
+                    const options = Array.from(sel.options).map(o => ({text: o.text, value: o.value}));
+                    if (options.some(o => o.text === '悠悠有品')) {
+                        const yyyp = options.find(o => o.text === '悠悠有品');
+                        return {value: yyyp.value, options: options};
+                    }
+                }
+                return null;
+            }""")
+            print(f"  select 信息: {select_info}", flush=True)
+            if select_info:
+                page.evaluate("""(targetValue) => {
                     const selects = document.querySelectorAll('select');
                     for (const sel of selects) {
-                        const options = Array.from(sel.options).map(o => ({text: o.text, value: o.value}));
-                        if (options.some(o => o.text === '悠悠有品')) {
-                            const yyyp = options.find(o => o.text === '悠悠有品');
-                            return {value: yyyp.value};
+                        const options = Array.from(sel.options).map(o => o.text);
+                        if (options.includes('悠悠有品')) {
+                            sel.value = targetValue;
+                            sel.dispatchEvent(new Event('change', {bubbles: true}));
+                            sel.dispatchEvent(new Event('input', {bubbles: true}));
+                            return true;
                         }
                     }
-                    return null;
-                }""")
-                if select_info:
-                    page.evaluate("""(targetValue) => {
-                        const selects = document.querySelectorAll('select');
-                        for (const sel of selects) {
-                            const options = Array.from(sel.options).map(o => o.text);
-                            if (options.includes('悠悠有品')) {
-                                sel.value = targetValue;
-                                sel.dispatchEvent(new Event('change', {bubbles: true}));
-                                sel.dispatchEvent(new Event('input', {bubbles: true}));
-                                return true;
-                            }
-                        }
-                        return false;
-                    }""", select_info["value"])
-                    page.wait_for_timeout(2500)
-                    print("  ✓ 切换到悠悠有品")
-            except Exception as e:
-                result["errors"].append(f"切换平台失败: {e}")
+                    return false;
+                }""", select_info["value"])
+                page.wait_for_timeout(3000)
+                print("  ✓ 切换完成", flush=True)
 
             # 5. 切换日线
-            print("\n[5] 切换日线周期...")
-            try:
-                page.evaluate("""() => {
-                    const allElements = document.querySelectorAll('span, div, a, button');
-                    for (const el of allElements) {
-                        if (el.textContent.trim() === '日线' && el.offsetParent !== null) {
-                            el.click();
-                            return true;
-                        }
+            print("\n[5] 切换日线...", flush=True)
+            chart_before = chart_call_count
+            page.evaluate("""() => {
+                const els = document.querySelectorAll('span, div, a, button');
+                for (const el of els) {
+                    if (el.textContent.trim() === '日线' && el.offsetParent !== null) {
+                        el.click();
+                        return true;
                     }
-                    return false;
-                }""")
-                page.wait_for_timeout(3000)
-            except Exception as e:
-                result["errors"].append(f"切换日线失败: {e}")
+                }
+                return false;
+            }""")
+            page.wait_for_timeout(4000)
+            print(f"  chartAll 调用数: {chart_call_count} (新增 {chart_call_count - chart_before})", flush=True)
 
             # 提取日线数据
-            chart_url = "https://csqaq.com/proxies/api/v1/info/simple/chartAll"
-            if chart_url in api_responses:
-                try:
-                    chart_data = json.loads(api_responses[chart_url]["body"])
-                    if chart_data.get("code") == 200:
-                        arr = chart_data.get("data", [])
-                        result["chart_daily"] = {
-                            "count": len(arr) if isinstance(arr, list) else 0,
-                            "first": arr[0] if isinstance(arr, list) and arr else None,
-                            "last": arr[-1] if isinstance(arr, list) and arr else None,
-                        }
-                        print(f"  ✓ 日线数据: {result['chart_daily']['count']} 条")
-                except Exception as e:
-                    result["errors"].append(f"日线解析失败: {e}")
+            for url, data in all_api_data.items():
+                if "chartAll" in url:
+                    try:
+                        parsed = json.loads(data["body"])
+                        if parsed.get("code") == 200:
+                            arr = parsed.get("data", [])
+                            if isinstance(arr, list) and len(arr) > 0:
+                                result["chart_daily"] = {
+                                    "count": len(arr),
+                                    "first": arr[0],
+                                    "last": arr[-1],
+                                }
+                                print(f"  ✓ 日线: {len(arr)} 条", flush=True)
+                                break
+                    except Exception:
+                        pass
 
             # 6. 切换 1 小时
-            print("\n[6] 切换 1 小时周期...")
-            try:
-                page.evaluate("""() => {
-                    const allElements = document.querySelectorAll('span, div, a, button');
-                    for (const el of allElements) {
-                        if (el.textContent.trim() === '1小时' && el.offsetParent !== null) {
-                            el.click();
-                            return true;
-                        }
+            print("\n[6] 切换 1 小时...", flush=True)
+            chart_before = chart_call_count
+            page.evaluate("""() => {
+                const els = document.querySelectorAll('span, div, a, button');
+                for (const el of els) {
+                    if (el.textContent.trim() === '1小时' && el.offsetParent !== null) {
+                        el.click();
+                        return true;
                     }
-                    return false;
-                }""")
-                page.wait_for_timeout(3000)
-            except Exception as e:
-                result["errors"].append(f"切换1小时失败: {e}")
+                }
+                return false;
+            }""")
+            page.wait_for_timeout(4000)
+            print(f"  chartAll 调用数: {chart_call_count} (新增 {chart_call_count - chart_before})", flush=True)
 
-            # 提取 1 小时数据（清空旧响应重新捕获）
-            api_responses.clear()
-            page.wait_for_timeout(2000)
-            if chart_url in api_responses:
+            # 提取 1 小时数据 - 取最后一次 chartAll 响应
+            chart_urls = [url for url in all_api_data.keys() if "chartAll" in url]
+            if len(chart_urls) >= 2:
                 try:
-                    chart_data = json.loads(api_responses[chart_url]["body"])
-                    if chart_data.get("code") == 200:
-                        arr = chart_data.get("data", [])
-                        result["chart_1h"] = {
-                            "count": len(arr) if isinstance(arr, list) else 0,
-                            "first": arr[0] if isinstance(arr, list) and arr else None,
-                            "last": arr[-1] if isinstance(arr, list) and arr else None,
-                        }
-                        print(f"  ✓ 1小时数据: {result['chart_1h']['count']} 条")
+                    parsed = json.loads(all_api_data[chart_urls[-1]]["body"])
+                    if parsed.get("code") == 200:
+                        arr = parsed.get("data", [])
+                        if isinstance(arr, list) and len(arr) > 0:
+                            result["chart_1h"] = {
+                                "count": len(arr),
+                                "first": arr[0],
+                                "last": arr[-1],
+                            }
+                            print(f"  ✓ 1小时: {len(arr)} 条", flush=True)
                 except Exception as e:
                     result["errors"].append(f"1小时解析失败: {e}")
 
             # 7. 点击筹码分布图
-            print("\n[7] 点击筹码分布图...")
-            try:
-                page.evaluate("""() => {
-                    const elements = document.querySelectorAll('.chip_tag___2aXfK, span');
-                    for (const el of elements) {
-                        if (el.textContent.trim() === '筹码分布图' && el.offsetParent !== null) {
-                            el.click();
-                            return true;
-                        }
+            print("\n[7] 点击筹码分布图...", flush=True)
+            # 尝试多种选择器
+            chip_clicked = page.evaluate("""() => {
+                // 尝试 class 选择器
+                const chipEl = document.querySelector('.chip_tag___2aXfK');
+                if (chipEl) { chipEl.click(); return 'class'; }
+                // 尝试文本匹配
+                const els = document.querySelectorAll('span, div, a, button, li');
+                for (const el of els) {
+                    const text = el.textContent.trim();
+                    if ((text === '筹码分布图' || text === '筹码分布') && el.offsetParent !== null) {
+                        el.click();
+                        return 'text:' + text;
                     }
-                    return false;
-                }""")
-                page.wait_for_timeout(3000)
-            except Exception as e:
-                result["errors"].append(f"点击筹码分布图失败: {e}")
+                }
+                return false;
+            }""")
+            print(f"  点击结果: {chip_clicked}", flush=True)
+            page.wait_for_timeout(4000)
 
             # 提取筹码分布图数据
-            chip_url = "https://csqaq.com/proxies/api/v1/info/chipData"
-            if chip_url in api_responses:
-                try:
-                    chip_data = json.loads(api_responses[chip_url]["body"])
-                    if chip_data.get("code") == 200 and chip_data.get("data"):
-                        d = chip_data["data"]
-                        result["chip_data"] = {
-                            "fields": list(d.keys()),
-                            "date_count": len(d.get("date", [])),
-                            "first_date": d.get("date", [None])[0],
-                            "last_date": d.get("date", [None])[-1],
-                            "sample_low": d.get("low", [])[:3],
-                            "sample_high": d.get("high", [])[:3],
-                            "sample_volume": d.get("volume", [])[:3],
-                        }
-                        print(f"  ✓ 筹码分布: {result['chip_data']['date_count']} 天数据")
-                except Exception as e:
-                    result["errors"].append(f"筹码分布解析失败: {e}")
+            for url, data in all_api_data.items():
+                if "chipData" in url:
+                    try:
+                        parsed = json.loads(data["body"])
+                        if parsed.get("code") == 200 and parsed.get("data"):
+                            d = parsed["data"]
+                            result["chip_data"] = {
+                                "fields": list(d.keys()),
+                                "date_count": len(d.get("date", [])),
+                                "first_date": d.get("date", [None])[0],
+                                "last_date": d.get("date", [None])[-1],
+                                "sample_low": d.get("low", [])[:3],
+                                "sample_high": d.get("high", [])[:3],
+                                "sample_volume": d.get("volume", [])[:3],
+                            }
+                            print(f"  ✓ 筹码分布: {result['chip_data']['date_count']} 天", flush=True)
+                            break
+                    except Exception as e:
+                        result["errors"].append(f"筹码分布解析失败: {e}")
 
             browser.close()
 
     except Exception as e:
         result["errors"].append(f"Playwright 运行失败: {type(e).__name__}: {e}")
-        print(f"\n[FATAL] {type(e).__name__}: {e}")
+        print(f"\n[FATAL] {type(e).__name__}: {e}", flush=True)
 
     # 保存结果
     with open(RESULT_FILE, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
-    print(f"\n[8] 结果已保存: {RESULT_FILE}")
+    print(f"\n[8] 结果已保存: {RESULT_FILE}", flush=True)
 
     # 汇总
-    print("\n" + "=" * 60)
-    print("  测试汇总")
-    print("=" * 60)
-    print(f"  基本信息: {'✓' if result['info'] else '✗'}")
-    print(f"  日线数据: {'✓' if result['chart_daily'] else '✗'}")
-    print(f"  1小时数据: {'✓' if result['chart_1h'] else '✗'}")
-    print(f"  筹码分布: {'✓' if result['chip_data'] else '✗'}")
-    print(f"  错误数: {len(result['errors'])}")
+    print("\n" + "=" * 60, flush=True)
+    print("  测试汇总", flush=True)
+    print("=" * 60, flush=True)
+    print(f"  基本信息: {'✓' if result['info'] else '✗'}", flush=True)
+    print(f"  日线数据: {'✓' if result['chart_daily'] else '✗'}", flush=True)
+    print(f"  1小时数据: {'✓' if result['chart_1h'] else '✗'}", flush=True)
+    print(f"  筹码分布: {'✓' if result['chip_data'] else '✗'}", flush=True)
+    print(f"  错误数: {len(result['errors'])}", flush=True)
     for err in result["errors"]:
-        print(f"    - {err}")
+        print(f"    - {err}", flush=True)
 
 
 if __name__ == "__main__":
