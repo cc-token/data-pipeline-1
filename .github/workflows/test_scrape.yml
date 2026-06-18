@@ -6,7 +6,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v4
@@ -16,15 +16,19 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install playwright (skip browser deps, use system chrome)
         run: |
           pip install playwright
-          playwright install chromium --with-deps
+          # 不使用 --with-deps（apt 源慢），ubuntu-latest 已预装 Chrome
+          npx playwright install chromium
 
       - name: Run scrape test
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: /home/runner/.cache/ms-playwright
         run: python test_scrape.py
 
       - name: Upload result
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: result
