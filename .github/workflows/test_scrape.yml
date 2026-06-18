@@ -1,0 +1,31 @@
+name: Test Playwright Scrape
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install chromium --with-deps
+
+      - name: Run scrape test
+        run: python test_scrape.py
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: result.json
