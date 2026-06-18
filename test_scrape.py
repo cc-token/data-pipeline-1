@@ -274,10 +274,10 @@ def main():
                 const chipEl = document.querySelector('.chip_tag___2aXfK');
                 if (chipEl) { chipEl.click(); return 'class'; }
                 // 尝试文本匹配
-                const els = document.querySelectorAll('span, div, a, button, li');
+                const els = document.querySelectorAll('span, div, a, button, li, p');
                 for (const el of els) {
                     const text = el.textContent.trim();
-                    if ((text === '筹码分布图' || text === '筹码分布') && el.offsetParent !== null) {
+                    if ((text === '筹码分布图' || text === '筹码分布' || text === '筹码') && el.offsetParent !== null) {
                         el.click();
                         return 'text:' + text;
                     }
@@ -285,7 +285,41 @@ def main():
                 return false;
             }""")
             print(f"  点击结果: {chip_clicked}", flush=True)
-            page.wait_for_timeout(4000)
+            page.wait_for_timeout(5000)
+            print(f"  chipData API 是否调用: {'https://csqaq.com/proxies/api/v1/info/chipData' in all_api_data}", flush=True)
+
+            # 如果没找到，尝试通过 K 线图下方的标签切换
+            if not chip_clicked or 'https://csqaq.com/proxies/api/v1/info/chipData' not in all_api_data:
+                print("  尝试查找所有可点击的标签...", flush=True)
+                tags = page.evaluate("""() => {
+                    const results = [];
+                    document.querySelectorAll('span, div, a, button, li, p').forEach(el => {
+                        const text = el.textContent.trim();
+                        if (text.length > 0 && text.length < 20 && el.offsetParent !== null) {
+                            const rect = el.getBoundingClientRect();
+                            if (rect.width > 0 && rect.height > 0) {
+                                results.push({text: text, tag: el.tagName, class: (el.className || '').toString().substring(0, 50)});
+                            }
+                        }
+                    });
+                    return results.slice(0, 50);
+                }""")
+                print(f"  可见标签: {[t['text'] for t in tags]}", flush=True)
+
+                # 尝试点击包含"筹码"的元素
+                chip_clicked2 = page.evaluate("""() => {
+                    const els = document.querySelectorAll('*');
+                    for (const el of els) {
+                        const text = el.textContent.trim();
+                        if (text.includes('筹码') && text.length < 20 && el.offsetParent !== null && el.children.length === 0) {
+                            el.click();
+                            return text;
+                        }
+                    }
+                    return false;
+                }""")
+                print(f"  二次点击: {chip_clicked2}", flush=True)
+                page.wait_for_timeout(5000)
 
             # 提取筹码分布图数据
             chip_url = "https://csqaq.com/proxies/api/v1/info/chipData"
