@@ -58,7 +58,7 @@ def main():
             page = context.new_page()
 
             # 捕获所有 API 响应
-            all_api_data = {}
+            all_api_data = {}  # url -> list of responses
             chart_call_count = 0
 
             def handle_response(response):
@@ -73,12 +73,14 @@ def main():
                     # 记录所有 API URL
                     if url not in result["debug"]["api_urls"]:
                         result["debug"]["api_urls"].append(url)
-                    # 保存响应（提高大小限制到 1MB）
+                    # 保存响应（提高大小限制到 1MB），用列表存储多次请求
                     if len(body) < 1000000:
-                        all_api_data[url] = {
+                        if url not in all_api_data:
+                            all_api_data[url] = []
+                        all_api_data[url].append({
                             "status": response.status,
                             "body": body,
-                        }
+                        })
                     if "chartAll" in url:
                         chart_call_count += 1
                 except Exception:
@@ -98,16 +100,26 @@ def main():
             # 2. 提取基本信息 - 遍历所有捕获的 API 找 info/good
             print("\n[2] 提取基本信息...", flush=True)
             info_data = None
-            for url, data in all_api_data.items():
+            for url, responses in all_api_data.items():
                 if "info/good" in url:
+                    # 取最后一个响应
+                    last_resp = responses[-1]
                     try:
-                        parsed = json.loads(data["body"])
+                        parsed = json.loads(last_resp["body"])
+                        # 保存完整响应用于调试
+                        result["debug"]["info_raw"] = {
+                            "code": parsed.get("code"),
+                            "msg": parsed.get("msg"),
+                            "data_keys": list(parsed.get("data", {}).keys()) if isinstance(parsed.get("data"), dict) else None,
+                            "data_sample": str(parsed.get("data", {}))[:500] if parsed.get("data") else None,
+                        }
                         if parsed.get("code") == 200 and parsed.get("data"):
                             info_data = parsed["data"]
                             print(f"  ✓ 找到 info API: {url}", flush=True)
+                            print(f"  data keys: {list(info_data.keys())[:10]}", flush=True)
                             break
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        print(f"  解析失败: {e}", flush=True)
 
             if info_data:
                 result["info"] = {
@@ -132,8 +144,7 @@ def main():
                 print(f"  悠悠卖价: {result['info']['yyyp_sell_price']}", flush=True)
             else:
                 result["errors"].append("info API 未找到或无数据")
-                print(f"  ✗ 未找到 info API", flush=True)
-                print(f"  已捕获的 API: {result['debug']['api_urls']}", flush=True)
+                print(f"  ✗ 未找到 info API 或无数据", flush=True)
 
             # 3. 点击 K 线图
             print("\n[3] 点击 K 线图...", flush=True)
@@ -197,45 +208,48 @@ def main():
             page.wait_for_timeout(4000)
             print(f"  chartAll 调用数: {chart_call_count} (新增 {chart_call_count - chart_before})", flush=True)
 
-            # 提取日线数据
-            for url, data in all_api_data.items():
-                if "chartAll" in url:
-                    try:
-                        parsed = json.loads(data["body"])
-                        if parsed.get("code") == 200:
-                            arr = parsed.get("data", [])
-                            if isinstance(arr, list) and len(arr) > 0:
-                                result["chart_daily"] = {
-                                    "count": len(arr),
-                                    "first": arr[0],
-                                    "last": arr[-1],
-                                }
-                                print(f"  ✓ 日线: {len(arr)} 条", flush=True)
-                                break
-                    except Exception:
-                        pass
+            # 提取日线数据 - 取第一次 chartAll 响应
+            chart_url = "https://csqaq.com/proxies/api/v1/info/simple/chartAll"
+            if chart_url in all_api_data and all_api_data[chart_url]:
+                try:
+                    parsed = json.loads(all_api_data[chart_url][0]["body"])
+                    if parsed.get("code") == 200:
+                        arr = parsed.get("data", [])
+                        if isinstance(arr, list) and len(arr) > 0:
+                            result["chart_daily"] = {
+                                "count": len(arr),
+                                "first": arr[0],
+                                "last": arr[-1],
+                            }
+                            print(f"  ✓ 日线: {len(arr)} 条", flush=True)
+                except Exception as e:
+                    print(f"  日线解析失败: {e}", flush=True)
 
             # 6. 切换 1 小时
             print("\n[6] 切换 1 小时...", flush=True)
             chart_before = chart_call_count
-            page.evaluate("""() => {
-                const els = document.querySelectorAll('span, div, a, button');
-                for (const el of els) {
-                    if (el.textContent.trim() === '1小时' && el.offsetParent !== null) {
-                        el.click();
-                        return true;
+            # 尝试多种文本
+            clicked_1h = page.evaluate("""() => {
+                const targets = ['1小时', '1H', '1h', '1小时线'];
+                const els = document.querySelectorAll('span, div, a, button, li');
+                for (const target of targets) {
+                    for (const el of els) {
+                        if (el.textContent.trim() === target && el.offsetParent !== null) {
+                            el.click();
+                            return target;
+                        }
                     }
                 }
                 return false;
             }""")
+            print(f"  点击: {clicked_1h}", flush=True)
             page.wait_for_timeout(4000)
             print(f"  chartAll 调用数: {chart_call_count} (新增 {chart_call_count - chart_before})", flush=True)
 
-            # 提取 1 小时数据 - 取最后一次 chartAll 响应
-            chart_urls = [url for url in all_api_data.keys() if "chartAll" in url]
-            if len(chart_urls) >= 2:
+            # 提取 1 小时数据 - 取第二次 chartAll 响应
+            if chart_url in all_api_data and len(all_api_data[chart_url]) >= 2:
                 try:
-                    parsed = json.loads(all_api_data[chart_urls[-1]]["body"])
+                    parsed = json.loads(all_api_data[chart_url][-1]["body"])
                     if parsed.get("code") == 200:
                         arr = parsed.get("data", [])
                         if isinstance(arr, list) and len(arr) > 0:
@@ -270,25 +284,24 @@ def main():
             page.wait_for_timeout(4000)
 
             # 提取筹码分布图数据
-            for url, data in all_api_data.items():
-                if "chipData" in url:
-                    try:
-                        parsed = json.loads(data["body"])
-                        if parsed.get("code") == 200 and parsed.get("data"):
-                            d = parsed["data"]
-                            result["chip_data"] = {
-                                "fields": list(d.keys()),
-                                "date_count": len(d.get("date", [])),
-                                "first_date": d.get("date", [None])[0],
-                                "last_date": d.get("date", [None])[-1],
-                                "sample_low": d.get("low", [])[:3],
-                                "sample_high": d.get("high", [])[:3],
-                                "sample_volume": d.get("volume", [])[:3],
-                            }
-                            print(f"  ✓ 筹码分布: {result['chip_data']['date_count']} 天", flush=True)
-                            break
-                    except Exception as e:
-                        result["errors"].append(f"筹码分布解析失败: {e}")
+            chip_url = "https://csqaq.com/proxies/api/v1/info/chipData"
+            if chip_url in all_api_data and all_api_data[chip_url]:
+                try:
+                    parsed = json.loads(all_api_data[chip_url][-1]["body"])
+                    if parsed.get("code") == 200 and parsed.get("data"):
+                        d = parsed["data"]
+                        result["chip_data"] = {
+                            "fields": list(d.keys()),
+                            "date_count": len(d.get("date", [])),
+                            "first_date": d.get("date", [None])[0],
+                            "last_date": d.get("date", [None])[-1],
+                            "sample_low": d.get("low", [])[:3],
+                            "sample_high": d.get("high", [])[:3],
+                            "sample_volume": d.get("volume", [])[:3],
+                        }
+                        print(f"  ✓ 筹码分布: {result['chip_data']['date_count']} 天", flush=True)
+                except Exception as e:
+                    result["errors"].append(f"筹码分布解析失败: {e}")
 
             browser.close()
 
