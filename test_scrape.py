@@ -111,12 +111,16 @@ def main():
                             "code": parsed.get("code"),
                             "msg": parsed.get("msg"),
                             "data_keys": list(parsed.get("data", {}).keys()) if isinstance(parsed.get("data"), dict) else None,
-                            "data_sample": str(parsed.get("data", {}))[:500] if parsed.get("data") else None,
                         }
                         if parsed.get("code") == 200 and parsed.get("data"):
-                            info_data = parsed["data"]
+                            d = parsed["data"]
+                            # 数据结构: data.goods_info 才是饰品信息
+                            if "goods_info" in d:
+                                info_data = d["goods_info"]
+                            else:
+                                info_data = d
                             print(f"  ✓ 找到 info API: {url}", flush=True)
-                            print(f"  data keys: {list(info_data.keys())[:10]}", flush=True)
+                            print(f"  data keys: {list(d.keys())[:10]}", flush=True)
                             break
                     except Exception as e:
                         print(f"  解析失败: {e}", flush=True)
